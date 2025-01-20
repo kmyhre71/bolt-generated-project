@@ -21,7 +21,7 @@ import React, { useState } from 'react';
             return;
           }
 
-          const response = await fetch(url);
+          const response = await fetch(`/api?url=${encodeURIComponent(url)}`);
           if (!response.ok) {
             setLinks([{ url: 'Error fetching URL', status: 'Error' }]);
             return;
