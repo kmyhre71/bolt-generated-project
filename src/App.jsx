@@ -21,48 +21,31 @@ import React, { useState } from 'react';
             return;
           }
 
-          const response = await fetch(`/api?url=${encodeURIComponent(url)}`);
-          if (!response.ok) {
+          const response = await axios.get(`/api/validate?url=${encodeURIComponent(url)}`);
+          if (response.status !== 200) {
             setLinks([{ url: 'Error fetching URL', status: 'Error' }]);
             return;
           }
-          const html = await response.text();
+          const validatedLinks = response.data;
 
-          const linkRegex = /<a.*?href=["'](.*?)(?=["'])(?:[^>]*>)/g;
-          const extractedLinks = [];
-          let match;
-          while ((match = linkRegex.exec(html)) !== null) {
-            extractedLinks.push(match[1]);
-          }
+          const externalLinks = [];
+          const internalLinks = [];
+          const baseUrl = new URL(url).origin;
 
-          const initialLinks = extractedLinks.map(link => ({ url: link, status: 'Pending' }));
-          setLinks(initialLinks);
-
-          for (let i = 0; i < extractedLinks.length; i++) {
-            const link = extractedLinks[i];
+          for (const link of validatedLinks) {
             try {
-              const absoluteLink = new URL(link, url).href;
-              const response = await axios.get(absoluteLink, {
-                proxy: {
-                  host: 'localhost',
-                  port: 5174
-                }
-              });
-              setLinks(prevLinks => {
-                const newLinks = [...prevLinks];
-                newLinks[i] = { ...newLinks[i], status: response.status };
-                return newLinks;
-              });
-            } catch (error) {
-              const status = error.response ? error.response.status : 'Error';
-              console.error('Error validating link:', link, error);
-              setLinks(prevLinks => {
-                const newLinks = [...prevLinks];
-                 newLinks[i] = { ...newLinks[i], status: status };
-                return newLinks;
-              });
+              const linkUrl = new URL(link.url).origin;
+              if (linkUrl !== baseUrl) {
+                externalLinks.push(link);
+              } else {
+                internalLinks.push(link);
+              }
+            } catch (e) {
+              internalLinks.push(link);
             }
           }
+
+          setLinks([...externalLinks, ...internalLinks]);
         } catch (error) {
           console.error('Error fetching URL:', error);
           setLinks([{ url: 'Error fetching URL', status: 'Error' }]);
