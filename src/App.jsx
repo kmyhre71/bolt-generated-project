@@ -42,7 +42,12 @@ import React, { useState } from 'react';
             const link = extractedLinks[i];
             try {
               const absoluteLink = new URL(link, url).href;
-              const response = await axios.get(absoluteLink, {});
+              const response = await axios.get(absoluteLink, {
+                proxy: {
+                  host: 'localhost',
+                  port: 5174
+                }
+              });
               setLinks(prevLinks => {
                 const newLinks = [...prevLinks];
                 newLinks[i] = { ...newLinks[i], status: response.status };

@@ -10,6 +10,11 @@ import { defineConfig } from 'vite';
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, ''),
           },
+          '^https?://': {
+            target: 'https://example.com',
+            changeOrigin: true,
+            rewrite: (path) => path,
+          },
         },
       },
     });
