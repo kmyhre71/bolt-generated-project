@@ -32,43 +32,32 @@ import React, { useState } from 'react';
           const extractedLinks = [];
           let match;
           while ((match = linkRegex.exec(html)) !== null) {
-              extractedLinks.push(match[1]);
+            extractedLinks.push(match[1]);
           }
 
-          const validatedLinks = await Promise.all(
-            extractedLinks.map(async (link) => {
-              try {
-                const absoluteLink = new URL(link, url).href;
-                console.log('Validating link:', absoluteLink);
-                const response = await axios.get(absoluteLink, {});
-                console.log('Link validation response:', response);
-                return { url: absoluteLink, status: response.status };
-              } catch (error) {
-                const status = error.response ? error.response.status : 'Error';
-                console.error('Error validating link:', link, error);
-                return { url: link, status: status };
-              }
-            })
-          );
+          const initialLinks = extractedLinks.map(link => ({ url: link, status: 'Pending' }));
+          setLinks(initialLinks);
 
-          const externalLinks = [];
-          const internalLinks = [];
-          const baseUrl = new URL(url).origin;
-
-          for (const link of validatedLinks) {
+          for (let i = 0; i < extractedLinks.length; i++) {
+            const link = extractedLinks[i];
             try {
-              const linkUrl = new URL(link.url).origin;
-              if (linkUrl !== baseUrl) {
-                externalLinks.push(link);
-              } else {
-                internalLinks.push(link);
-              }
-            } catch (e) {
-              internalLinks.push(link);
+              const absoluteLink = new URL(link, url).href;
+              const response = await axios.get(absoluteLink, {});
+              setLinks(prevLinks => {
+                const newLinks = [...prevLinks];
+                newLinks[i] = { ...newLinks[i], status: response.status };
+                return newLinks;
+              });
+            } catch (error) {
+              const status = error.response ? error.response.status : 'Error';
+              console.error('Error validating link:', link, error);
+              setLinks(prevLinks => {
+                const newLinks = [...prevLinks];
+                 newLinks[i] = { ...newLinks[i], status: status };
+                return newLinks;
+              });
             }
           }
-
-          setLinks([...externalLinks, ...internalLinks]);
         } catch (error) {
           console.error('Error fetching URL:', error);
           setLinks([{ url: 'Error fetching URL', status: 'Error' }]);
@@ -104,11 +93,13 @@ import React, { useState } from 'react';
                 {links.map((link, index) => (
                   <tr key={index}>
                     <td>
-                      <span
-                        className={`status-icon ${
-                          link.status === 200 ? 'success' : 'error'
-                        }`}
-                      ></span>
+                      {link.status === 'Pending' ? null : (
+                        <span
+                          className={`status-icon ${
+                            link.status === 200 ? 'success' : 'error'
+                          }`}
+                        ></span>
+                      )}
                     </td>
                     <td>{link.url}</td>
                     <td>{link.status}</td>
