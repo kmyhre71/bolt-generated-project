@@ -10,8 +10,24 @@ import React, { useState } from 'react';
         setLoading(true);
         setLinks([]);
         try {
-          const response = await axios.get(url);
-          const html = response.data;
+          if (!url) {
+            setLinks([{ url: 'Please enter a URL', status: 'Error' }]);
+            return;
+          }
+          try {
+            new URL(url);
+          } catch (e) {
+            setLinks([{ url: 'Invalid URL format', status: 'Error' }]);
+            return;
+          }
+
+          const response = await fetch(url);
+          if (!response.ok) {
+            setLinks([{ url: 'Error fetching URL', status: 'Error' }]);
+            return;
+          }
+          const html = await response.text();
+
           const linkRegex = /<a.*?href=["'](.*?)["'].*?>/g;
           const extractedLinks = [];
           let match;
@@ -23,17 +39,32 @@ import React, { useState } from 'react';
             extractedLinks.map(async (link) => {
               try {
                 const absoluteLink = new URL(link, url).href;
-                const response = await axios.get(absoluteLink);
-                return { url: absoluteLink, status: response.status, isExternal: new URL(absoluteLink).origin !== new URL(url).origin };
+                const response = await axios.get(absoluteLink, {});
+                return { url: absoluteLink, status: response.status };
               } catch (error) {
                 const status = error.response ? error.response.status : 'Error';
-                return { url: link, status: status, isExternal: new URL(link, url).origin !== new URL(url).origin };
+                console.error('Error validating link:', link, error);
+                return { url: link, status: status };
               }
             })
           );
 
-          const externalLinks = validatedLinks.filter(link => link.isExternal);
-          const internalLinks = validatedLinks.filter(link => !link.isExternal);
+          const externalLinks = [];
+          const internalLinks = [];
+          const baseUrl = new URL(url).origin;
+
+          for (const link of validatedLinks) {
+            try {
+              const linkUrl = new URL(link.url).origin;
+              if (linkUrl !== baseUrl) {
+                externalLinks.push(link);
+              } else {
+                internalLinks.push(link);
+              }
+            } catch (e) {
+              internalLinks.push(link);
+            }
+          }
 
           setLinks([...externalLinks, ...internalLinks]);
         } catch (error) {
