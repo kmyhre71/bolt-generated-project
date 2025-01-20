@@ -28,18 +28,20 @@ import React, { useState } from 'react';
           }
           const html = await response.text();
 
-          const linkRegex = /<a.*?href=["'](.*?)["'].*?>/g;
+          const linkRegex = /<a.*?href=["'](.*?)(?=["'])(?:[^>]*>)/g;
           const extractedLinks = [];
           let match;
           while ((match = linkRegex.exec(html)) !== null) {
-            extractedLinks.push(match[1]);
+              extractedLinks.push(match[1]);
           }
 
           const validatedLinks = await Promise.all(
             extractedLinks.map(async (link) => {
               try {
                 const absoluteLink = new URL(link, url).href;
+                console.log('Validating link:', absoluteLink);
                 const response = await axios.get(absoluteLink, {});
+                console.log('Link validation response:', response);
                 return { url: absoluteLink, status: response.status };
               } catch (error) {
                 const status = error.response ? error.response.status : 'Error';
